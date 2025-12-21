@@ -33,7 +33,7 @@ function checkRateLimit(conversationId: string, userId: string): boolean {
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { conversationId: string } }
+  { params }: { params: Promise<{ conversationId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -42,7 +42,7 @@ export async function GET(
     }
 
     const userId = session.user.id;
-    const { conversationId } = params;
+    const { conversationId } = await params;
 
     // Check if user is a participant
     const participant = await prisma.conversationParticipant.findFirst({
@@ -131,7 +131,7 @@ export async function GET(
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: { conversationId: string } }
+  { params }: { params: Promise<{ conversationId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -140,7 +140,7 @@ export async function POST(
     }
 
     const userId = session.user.id;
-    const { conversationId } = params;
+    const { conversationId } = await params;
 
     // Check if user is a participant
     const participant = await prisma.conversationParticipant.findFirst({

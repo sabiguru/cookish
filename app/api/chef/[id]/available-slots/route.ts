@@ -3,9 +3,10 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: chefId } = await params;
     const { searchParams } = new URL(req.url);
     const dateParam = searchParams.get('date');
 
@@ -18,7 +19,6 @@ export async function GET(
 
     const requestedDate = new Date(dateParam);
     const dayOfWeek = requestedDate.getDay();
-    const chefId = params.id;
 
     // Get chef's recurring availability for this day
     const recurringAvailability = await prisma.recurringAvailability.findMany({

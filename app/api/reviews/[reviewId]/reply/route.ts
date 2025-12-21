@@ -11,7 +11,7 @@ import { notify } from '@/lib/notify';
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: { reviewId: string } }
+  { params }: { params: Promise<{ reviewId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -20,7 +20,7 @@ export async function POST(
     }
 
     const userId = session.user.id;
-    const { reviewId } = params;
+    const { reviewId } = await params;
 
     const body = await req.json();
     const validatedData = CreateReviewReplySchema.parse({
@@ -145,7 +145,7 @@ export async function POST(
  */
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { reviewId: string } }
+  { params }: { params: Promise<{ reviewId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -154,7 +154,7 @@ export async function DELETE(
     }
 
     const userId = session.user.id;
-    const { reviewId } = params;
+    const { reviewId } = await params;
 
     // Find the reply
     const reply = await prisma.reviewReply.findUnique({

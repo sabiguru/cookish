@@ -81,15 +81,16 @@ async function getActivityLogs(searchParams: any) {
 export default async function AdminLogsPage({
   searchParams,
 }: {
-  searchParams: any;
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
     return null;
   }
 
-  const data = await getActivityLogs(searchParams);
+  const data = await getActivityLogs(resolvedSearchParams);
 
   const getActionColor = (action: string) => {
     if (action.includes('CREATE')) return 'default';
@@ -191,7 +192,7 @@ export default async function AdminLogsPage({
               </label>
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                defaultValue={searchParams.entityType || ''}
+                defaultValue={resolvedSearchParams.entityType || ''}
               >
                 <option value="">All Types</option>
                 {data.entityTypes.map((type) => (
@@ -209,7 +210,7 @@ export default async function AdminLogsPage({
               </label>
               <select
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                defaultValue={searchParams.action || ''}
+                defaultValue={resolvedSearchParams.action || ''}
               >
                 <option value="">All Actions</option>
                 {data.actions.map((action) => (
@@ -228,7 +229,7 @@ export default async function AdminLogsPage({
               <input
                 type="date"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                defaultValue={searchParams.dateFrom || ''}
+                defaultValue={resolvedSearchParams.dateFrom || ''}
               />
             </div>
 
@@ -240,16 +241,16 @@ export default async function AdminLogsPage({
               <input
                 type="date"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                defaultValue={searchParams.dateTo || ''}
+                defaultValue={resolvedSearchParams.dateTo || ''}
               />
             </div>
           </div>
 
           {/* Clear Filters */}
-          {(searchParams.entityType ||
-            searchParams.action ||
-            searchParams.dateFrom ||
-            searchParams.dateTo) && (
+          {(resolvedSearchParams.entityType ||
+            resolvedSearchParams.action ||
+            resolvedSearchParams.dateFrom ||
+            resolvedSearchParams.dateTo) && (
             <div className="mt-4">
               <Button
                 variant="outline"

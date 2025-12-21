@@ -12,19 +12,23 @@ export const metadata = {
 export default async function BookingPage({
   searchParams,
 }: {
-  searchParams: { chefId?: string };
+  searchParams: Promise<{ chefId?: string }>;
 }) {
   const session = await getServerSession(authOptions);
+  const resolvedSearchParams = await searchParams;
 
   if (!session?.user?.id) {
-    redirect('/auth/signin?callbackUrl=/booking' + (searchParams.chefId ? `?chefId=${searchParams.chefId}` : ''));
+    redirect(
+      '/auth/signin?callbackUrl=/booking' +
+        (resolvedSearchParams.chefId ? `?chefId=${resolvedSearchParams.chefId}` : '')
+    );
   }
 
   // Fetch chef details if chefId is provided
   let chef = null;
-  if (searchParams.chefId) {
+  if (resolvedSearchParams.chefId) {
     chef = await prisma.chefProfile.findUnique({
-      where: { id: searchParams.chefId },
+      where: { id: resolvedSearchParams.chefId },
       include: {
         user: {
           select: {
