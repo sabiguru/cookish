@@ -1,0 +1,982 @@
+// --------------------
+// Prisma Schema: Cook Booking App (Full)
+// Database: PostgreSQL
+// --------------------
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// -------------------- ENUMS --------------------
+
+enum Role {
+  USER
+  CHEF
+  STAFF
+  ADMIN
+  SUPERADMIN
+}
+
+enum BookingStatus {
+  PENDING
+  AWAITING_PAYMENT
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  PAID
+  REFUNDED
+  FAILED
+}
+
+enum RefundStatus {
+  REQUESTED
+  APPROVED
+  DECLINED
+  PROCESSED
+}
+
+enum PayoutStatus {
+  PENDING
+  SCHEDULED
+  SENT
+  FAILED
+}
+
+enum IngredientUnit {
+  G
+  KG
+  ML
+  L
+  TSP
+  TBSP
+  CUP
+  PIECE
+  PACK
+  BUNCH
+  SLICE
+  OTHER
+}
+
+enum PayerType {
+  USER
+  CHEF
+}
+
+enum SubstitutionRule {
+  STRICT
+  ASK_FIRST
+  CHEF_DISCRETION
+}
+
+enum ProcurementStatus {
+  NOT_REQUIRED
+  NEEDED
+  ORDERING
+  ORDERED
+  PACKED
+  OUT_FOR_DELIVERY
+  DELIVERED
+  VERIFIED
+  SUBSTITUTED
+  CANCELLED
+}
+
+enum OrderType {
+  DELIVERY
+  PICKUP
+  IN_PERSON_SHOP
+}
+
+enum OrderStatus {
+  DRAFT
+  PLACED
+  PACKED
+  EN_ROUTE
+  DELIVERED
+  CANCELLED
+  RECONCILED
+}
+
+enum RetailerType {
+  SUPERMARKET
+  BUTCHER
+  BAKERY
+  FISHMONGER
+  WHOLESALE
+  OTHER
+}
+
+enum ConversationType {
+  DIRECT
+  BOOKING
+  DISPUTE
+  SYSTEM
+}
+
+enum NotificationType {
+  BOOKING_UPDATE
+  MESSAGE
+  NEW_MESSAGE
+  PROCUREMENT
+  PAYMENT
+  CERT_EXPIRY
+  DISPUTE
+  ADMIN
+  NEW_REVIEW
+  REVIEW_REPLY
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  ESCALATED
+  CLOSED
+}
+
+enum AvailabilityType {
+  AVAILABLE
+  UNAVAILABLE
+  TIME_OFF
+}
+
+enum SubscriptionPlan {
+  BASIC
+  PRO
+  ELITE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  UNPAID
+  TRIALING
+}
+
+enum ApiPlanTier {
+  FREE
+  BASIC
+  PRO
+  ENTERPRISE
+}
+
+enum LogSeverity {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+  CRITICAL
+}
+
+// -------------------- AUTH (NextAuth-compatible) --------------------
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  image        String?
+  phone        String?
+  language     String?  @default("en")
+  roles        Role[]   @default([USER])
+  passwordHash String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  accounts                 Account[]
+  sessions                 Session[]
+  chefProfile              ChefProfile?
+  bookings                 Booking[]                 @relation("UserBookings")
+  payments                 Payment[]
+  payouts                  Payout[]
+  refunds                  Refund[]
+  reviews                  Review[]                  @relation("UserReviews")
+  addresses                Address[]
+  favourites               Favourite[]
+  conversations            ConversationParticipant[]
+  messages                 Message[]                 @relation("UserMessages")
+  disputes                 Dispute[]                 @relation("UserDisputes")
+  notifications            Notification[]
+  receipts                 Receipt[]                 @relation("UserReceipts")
+  procurementOrdersCreated ProcurementOrder[]        @relation("OrderCreatedBy")
+  couponRedemptions        CouponRedemption[]
+  activityLogs             ActivityLog[]
+  disputeMessages          DisputeMessage[]
+  assignedDisputes         Dispute[]                 @relation("AssignedDisputes")
+  reviewReplies            ReviewReply[]             @relation("ReviewReplies")
+  subscriptions            Subscription[]
+  apiClients               ApiClient[]
+
+  @@index([email])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// -------------------- CATALOG / TAXONOMY --------------------
+
+model Cuisine {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  chefs ChefCuisine[]
+}
+
+model DietTag {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  chefs ChefDietTag[]
+}
+
+// -------------------- CHEF --------------------
+
+model ChefProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  bio               String?
+  specialties       String[]
+  languages         String[]
+  travelRadiusKm    Int?
+  avgPricePerPerson Int?
+  serviceAreaGeo    Json?
+  verified          Boolean  @default(false)
+  avgRating         Float?   @default(0)
+  reviewsCount      Int      @default(0)
+
+  user                  User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  certifications        Certification[]
+  menus                 Menu[]
+  bookings              Booking[]               @relation("ChefBookings")
+  reviews               Review[]                @relation("ChefReviews")
+  availability          Availability[]
+  recurringAvailability RecurringAvailability[]
+  cuisines              ChefCuisine[]
+  dietTags              ChefDietTag[]
+  gallery               ChefMedia[]
+  favourites            Favourite[]
+
+  @@index([verified])
+  @@index([avgRating])
+}
+
+model ChefMedia {
+  id        String   @id @default(cuid())
+  chefId    String
+  url       String
+  caption   String?
+  createdAt DateTime @default(now())
+
+  chef ChefProfile @relation(fields: [chefId], references: [id], onDelete: Cascade)
+
+  @@index([chefId])
+}
+
+model ChefCuisine {
+  chefId      String
+  cuisineId   String
+  description String? // Chef's personal description of their cuisine style
+
+  chef    ChefProfile @relation(fields: [chefId], references: [id], onDelete: Cascade)
+  cuisine Cuisine     @relation(fields: [cuisineId], references: [id], onDelete: Cascade)
+
+  @@id([chefId, cuisineId])
+}
+
+model ChefDietTag {
+  chefId String
+  dietId String
+
+  chef ChefProfile @relation(fields: [chefId], references: [id], onDelete: Cascade)
+  diet DietTag     @relation(fields: [dietId], references: [id], onDelete: Cascade)
+
+  @@id([chefId, dietId])
+}
+
+model Certification {
+  id        String    @id @default(cuid())
+  chefId    String
+  name      String
+  issuer    String?
+  issuedAt  DateTime?
+  expiresAt DateTime?
+
+  chef ChefProfile @relation(fields: [chefId], references: [id], onDelete: Cascade)
+
+  @@index([chefId])
+  @@index([expiresAt])
+}
+
+// -------------------- MENUS --------------------
+
+model Menu {
+  id             String   @id @default(cuid())
+  chefId         String
+  title          String
+  description    String?
+  pricePerPerson Int
+  minGuests      Int
+  maxGuests      Int?
+  addOns         Json?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  chef     ChefProfile @relation(fields: [chefId], references: [id], onDelete: Cascade)
+  items    MenuItem[]
+  bookings Booking[]
+
+  @@index([chefId])
+  @@index([isActive])
+}
+
+model MenuItem {
+  id          String   @id @default(cuid())
+  menuId      String
+  name        String
+  description String?
+  dietaryTags String[]
+  isRequired  Boolean  @default(true)
+
+  menu   Menu             @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  recipe MenuIngredient[]
+
+  @@index([menuId])
+}
+
+model Ingredient {
+  id          String         @id @default(cuid())
+  name        String
+  defaultUnit IngredientUnit @default(PIECE)
+  aliases     String[]
+  tags        String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  menuLinks    MenuIngredient[]
+  skuMaps      RetailerSkuMap[]
+  bookingItems BookingIngredientItem[]
+
+  @@unique([name])
+}
+
+model MenuIngredient {
+  id           String         @id @default(cuid())
+  menuItemId   String
+  ingredientId String
+  quantity     Decimal        @db.Decimal(12, 3)
+  unit         IngredientUnit
+  required     Boolean        @default(true)
+  notes        String?
+
+  createdAt DateTime @default(now())
+
+  menuItem   MenuItem   @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+
+  @@index([menuItemId])
+  @@index([ingredientId])
+}
+
+// -------------------- AVAILABILITY --------------------
+
+model Availability {
+  id          String           @id @default(cuid())
+  chefId      String
+  type        AvailabilityType @default(AVAILABLE)
+  start       DateTime
+  end         DateTime
+  note        String?
+  isRecurring Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @default(now()) @updatedAt
+
+  chef ChefProfile @relation(fields: [chefId], references: [id], onDelete: Cascade)
+
+  @@index([chefId])
+  @@index([start, end])
+}
+
+model RecurringAvailability {
+  id        String           @id @default(cuid())
+  chefId    String
+  dayOfWeek Int // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  startTime String // Format: "HH:MM" (e.g., "09:00")
+  endTime   String // Format: "HH:MM" (e.g., "17:00")
+  type      AvailabilityType @default(AVAILABLE)
+  note      String?
+  isActive  Boolean          @default(true)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  chef ChefProfile @relation(fields: [chefId], references: [id], onDelete: Cascade)
+
+  @@index([chefId])
+  @@index([dayOfWeek])
+}
+
+// -------------------- ADDRESS / VENUE --------------------
+
+model Address {
+  id         String   @id @default(cuid())
+  userId     String
+  label      String?
+  line1      String
+  line2      String?
+  city       String
+  region     String?
+  postalCode String
+  country    String
+  lat        Float?
+  lng        Float?
+  createdAt  DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  venues Venue[]
+
+  @@index([userId])
+}
+
+model Venue {
+  id        String  @id @default(cuid())
+  bookingId String
+  addressId String
+  notes     String?
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  address Address @relation(fields: [addressId], references: [id], onDelete: Restrict)
+
+  @@unique([bookingId])
+}
+
+// -------------------- BOOKING --------------------
+
+model Booking {
+  id       String        @id @default(cuid())
+  userId   String
+  chefId   String
+  menuId   String
+  status   BookingStatus @default(PENDING)
+  date     DateTime
+  guests   Int
+  occasion String?
+  notes    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user              User                    @relation("UserBookings", fields: [userId], references: [id], onDelete: Cascade)
+  chef              ChefProfile             @relation("ChefBookings", fields: [chefId], references: [id], onDelete: Restrict)
+  menu              Menu                    @relation(fields: [menuId], references: [id], onDelete: Restrict)
+  venue             Venue?
+  payment           Payment?
+  procurementOrders ProcurementOrder[]
+  ingredients       BookingIngredientItem[]
+  reviews           Review[]
+  conversation      Conversation?
+  disputes          Dispute[]
+  couponRedemptions CouponRedemption[]
+  activityLogs      ActivityLog[]
+
+  @@index([userId])
+  @@index([chefId])
+  @@index([date])
+}
+
+// -------------------- PAYMENTS --------------------
+
+model Payment {
+  id            String        @id @default(cuid())
+  bookingId     String        @unique
+  userId        String
+  amount        Decimal       @db.Decimal(12, 2)
+  currency      String        @default("GBP")
+  status        PaymentStatus @default(PENDING)
+  provider      String
+  transactionId String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  booking Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  refunds Refund[]
+}
+
+model Refund {
+  id          String       @id @default(cuid())
+  paymentId   String
+  amount      Decimal      @db.Decimal(12, 2)
+  status      RefundStatus @default(REQUESTED)
+  reason      String?
+  createdById String?
+  createdAt   DateTime     @default(now())
+
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([paymentId])
+}
+
+model Payout {
+  id          String       @id @default(cuid())
+  chefUserId  String
+  amount      Decimal      @db.Decimal(12, 2)
+  currency    String       @default("GBP")
+  status      PayoutStatus @default(PENDING)
+  provider    String
+  externalRef String?
+  createdAt   DateTime     @default(now())
+  sentAt      DateTime?
+
+  chefUser User @relation(fields: [chefUserId], references: [id], onDelete: Restrict)
+
+  @@index([chefUserId])
+}
+
+// -------------------- PROCUREMENT --------------------
+
+model BookingIngredientItem {
+  id                 String            @id @default(cuid())
+  bookingId          String
+  ingredientId       String
+  displayName        String
+  quantityNeeded     Decimal           @db.Decimal(12, 3)
+  unit               IngredientUnit
+  payer              PayerType         @default(USER)
+  status             ProcurementStatus @default(NEEDED)
+  brandPreference    String?
+  qualityNotes       String?
+  avoid              Boolean           @default(false)
+  substitutionRule   SubstitutionRule  @default(ASK_FIRST)
+  substitutionNote   String?
+  quantityReceived   Decimal?          @db.Decimal(12, 3)
+  procurementOrderId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  booking          Booking           @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  ingredient       Ingredient        @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+  procurementOrder ProcurementOrder? @relation(fields: [procurementOrderId], references: [id], onDelete: SetNull)
+
+  @@index([bookingId])
+  @@index([status])
+  @@index([procurementOrderId])
+}
+
+model Retailer {
+  id      String       @id @default(cuid())
+  name    String
+  type    RetailerType @default(SUPERMARKET)
+  country String?
+  url     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders  ProcurementOrder[]
+  skuMaps RetailerSkuMap[]
+
+  @@unique([name, country])
+}
+
+model RetailerSkuMap {
+  id           String          @id @default(cuid())
+  retailerId   String
+  ingredientId String
+  sku          String
+  nameOverride String?
+  unit         IngredientUnit?
+  packSize     Decimal?        @db.Decimal(12, 3)
+  url          String?
+
+  retailer   Retailer   @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@unique([retailerId, ingredientId])
+  @@index([ingredientId])
+}
+
+model ProcurementOrder {
+  id          String      @id @default(cuid())
+  bookingId   String
+  retailerId  String?
+  orderType   OrderType   @default(DELIVERY)
+  status      OrderStatus @default(DRAFT)
+  subtotal    Decimal     @default(0) @db.Decimal(12, 2)
+  fees        Decimal     @default(0) @db.Decimal(12, 2)
+  markup      Decimal     @default(0) @db.Decimal(12, 2)
+  total       Decimal     @default(0) @db.Decimal(12, 2)
+  currency    String      @default("GBP")
+  externalRef String?
+  etaStart    DateTime?
+  etaEnd      DateTime?
+  notes       String?
+
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  booking       Booking                 @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  retailer      Retailer?               @relation(fields: [retailerId], references: [id], onDelete: SetNull)
+  createdByUser User?                   @relation("OrderCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  items         BookingIngredientItem[]
+  receipts      Receipt[]
+  hold          PaymentHold?
+
+  @@index([bookingId])
+  @@index([status])
+}
+
+model PaymentHold {
+  id                 String    @id @default(cuid())
+  procurementOrderId String    @unique
+  amount             Decimal   @db.Decimal(12, 2)
+  currency           String    @default("GBP")
+  provider           String
+  providerIntentId   String?
+  createdAt          DateTime  @default(now())
+  releasedAt         DateTime?
+  capturedAmount     Decimal?  @db.Decimal(12, 2)
+  refundedAmount     Decimal?  @db.Decimal(12, 2)
+
+  order ProcurementOrder @relation(fields: [procurementOrderId], references: [id], onDelete: Cascade)
+}
+
+model Receipt {
+  id                 String   @id @default(cuid())
+  procurementOrderId String
+  uploadedByUserId   String
+  url                String
+  grossTotal         Decimal  @db.Decimal(12, 2)
+  taxTotal           Decimal? @db.Decimal(12, 2)
+  createdAt          DateTime @default(now())
+
+  order      ProcurementOrder @relation(fields: [procurementOrderId], references: [id], onDelete: Cascade)
+  uploadedBy User             @relation("UserReceipts", fields: [uploadedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([procurementOrderId])
+}
+
+// -------------------- REVIEWS --------------------
+
+model Review {
+  id        String   @id @default(cuid())
+  bookingId String
+  userId    String
+  chefId    String
+  rating    Int
+  comment   String?
+  photos    String[]
+  createdAt DateTime @default(now())
+
+  user    User         @relation("UserReviews", fields: [userId], references: [id], onDelete: Restrict)
+  chef    ChefProfile  @relation("ChefReviews", fields: [chefId], references: [id], onDelete: Restrict)
+  booking Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  reply   ReviewReply?
+
+  @@unique([bookingId])
+  @@index([chefId])
+  @@index([bookingId])
+}
+
+model ReviewReply {
+  id        String   @id @default(cuid())
+  reviewId  String   @unique
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  author User   @relation("ReviewReplies", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
+}
+
+// -------------------- MESSAGING --------------------
+
+model Conversation {
+  id        String           @id @default(cuid())
+  type      ConversationType @default(DIRECT)
+  bookingId String?
+  createdAt DateTime         @default(now())
+
+  booking      Booking?                  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@unique([bookingId])
+  @@index([bookingId])
+}
+
+model ConversationParticipant {
+  conversationId String
+  userId         String
+  joinedAt       DateTime @default(now())
+  isArchived     Boolean  @default(false)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id             String    @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String?
+  attachments    Json?
+  createdAt      DateTime  @default(now())
+  readAt         DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation("UserMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([createdAt])
+}
+
+// -------------------- DISPUTES --------------------
+
+model Dispute {
+  id           String        @id @default(cuid())
+  bookingId    String
+  openedById   String
+  status       DisputeStatus @default(OPEN)
+  reason       String?
+  resolution   String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  assignedToId String?
+
+  booking    Booking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  openedBy   User             @relation("UserDisputes", fields: [openedById], references: [id], onDelete: Cascade)
+  assignedTo User?            @relation("AssignedDisputes", fields: [assignedToId], references: [id], onDelete: SetNull)
+  messages   DisputeMessage[]
+
+  @@index([bookingId])
+  @@index([status])
+}
+
+model DisputeMessage {
+  id          String   @id @default(cuid())
+  disputeId   String
+  authorId    String
+  body        String
+  attachments Json?
+  createdAt   DateTime @default(now())
+
+  dispute Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+  author  User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([disputeId])
+}
+
+// -------------------- NOTIFICATIONS --------------------
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String?
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@index([createdAt])
+}
+
+// -------------------- FAVOURITES --------------------
+
+model Favourite {
+  id        String   @id @default(cuid())
+  userId    String
+  chefId    String
+  createdAt DateTime @default(now())
+
+  user User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chef ChefProfile @relation(fields: [chefId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, chefId])
+  @@index([chefId])
+}
+
+// -------------------- COUPONS --------------------
+
+model Coupon {
+  id             String    @id @default(cuid())
+  code           String    @unique
+  description    String?
+  percentOff     Int?
+  amountOff      Decimal?  @db.Decimal(12, 2)
+  currency       String?
+  minSpend       Decimal?  @db.Decimal(12, 2)
+  maxRedemptions Int?
+  redeemBy       DateTime?
+  createdAt      DateTime  @default(now())
+  isActive       Boolean   @default(true)
+
+  redemptions CouponRedemption[]
+}
+
+model CouponRedemption {
+  id        String   @id @default(cuid())
+  couponId  String
+  userId    String
+  bookingId String
+  amount    Decimal  @db.Decimal(12, 2)
+  createdAt DateTime @default(now())
+
+  coupon  Coupon  @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@unique([couponId, bookingId])
+  @@index([couponId])
+  @@index([userId])
+}
+
+// -------------------- AUDIT LOG --------------------
+
+model ActivityLog {
+  id         String      @id @default(cuid())
+  actorId    String?
+  bookingId  String?
+  entityType String
+  entityId   String
+  action     String
+  diff       Json?
+  message    String?
+  severity   LogSeverity @default(INFO)
+  component  String?
+  metadata   Json?
+  createdAt  DateTime    @default(now())
+
+  actor   User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  booking Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([bookingId])
+  @@index([severity])
+  @@index([createdAt])
+  @@index([component])
+}
+
+// -------------------- SUBSCRIPTIONS & BILLING --------------------
+
+model Subscription {
+  id                 String             @id @default(cuid())
+  userId             String
+  stripeSubId        String?            @unique
+  stripeCustomerId   String?
+  plan               SubscriptionPlan
+  status             SubscriptionStatus
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  cancelAtPeriodEnd  Boolean            @default(false)
+  canceledAt         DateTime?
+  trialEnd           DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([plan])
+}
+
+// -------------------- ANALYTICS --------------------
+
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  type      String
+  userId    String?
+  entity    String?
+  entityId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([type])
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+// -------------------- API ACCESS --------------------
+
+model ApiClient {
+  id         String      @id @default(cuid())
+  userId     String
+  name       String
+  key        String      @unique
+  secret     String
+  planTier   ApiPlanTier
+  usageCount Int         @default(0)
+  usageLimit Int?
+  isActive   Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+  lastUsedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([key])
+  @@index([isActive])
+}
