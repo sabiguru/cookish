@@ -70,7 +70,7 @@ async function getBookings(searchParams: any) {
 export default async function AdminBookingsPage({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | undefined };
+  searchParams: Promise<{ [key: string]: string | undefined }>;
 }) {
   const session = await getServerSession(authOptions);
 
@@ -78,7 +78,8 @@ export default async function AdminBookingsPage({
     return null;
   }
 
-  const bookings = await getBookings(searchParams);
+  const resolvedSearchParams = await searchParams;
+  const bookings = await getBookings(resolvedSearchParams);
 
   return (
     <div className="space-y-6 max-w-7xl">
