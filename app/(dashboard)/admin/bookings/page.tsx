@@ -99,7 +99,7 @@ export default async function AdminBookingsPage({
               <div className="flex gap-2">
                 <Link href="/dashboard/admin/bookings">
                   <Badge
-                    variant={!searchParams.status ? 'default' : 'outline'}
+                    variant={!resolvedSearchParams.status ? 'default' : 'outline'}
                     className="cursor-pointer rounded-full"
                   >
                     All
@@ -108,7 +108,7 @@ export default async function AdminBookingsPage({
                 {['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED'].map((status) => (
                   <Link key={status} href={`/dashboard/admin/bookings?status=${status}`}>
                     <Badge
-                      variant={searchParams.status === status ? 'default' : 'outline'}
+                      variant={resolvedSearchParams.status === status ? 'default' : 'outline'}
                       className="cursor-pointer rounded-full"
                     >
                       {status}

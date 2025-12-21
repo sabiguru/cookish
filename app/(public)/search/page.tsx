@@ -237,10 +237,11 @@ async function getPopularSearches() {
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: SearchParams;
+  searchParams: Promise<SearchParams>;
 }) {
-  const query = searchParams.q || '';
-  const activeTab = searchParams.tab || 'all';
+  const resolvedSearchParams = await searchParams;
+  const query = resolvedSearchParams.q || '';
+  const activeTab = resolvedSearchParams.tab || 'all';
 
   const [results, popularSearches] = await Promise.all([
     searchAll(query),

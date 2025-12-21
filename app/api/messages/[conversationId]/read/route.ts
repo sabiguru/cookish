@@ -10,7 +10,7 @@ import { MarkAsReadSchema } from '@/lib/validators/message';
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: { conversationId: string } }
+  { params }: { params: Promise<{ conversationId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -19,7 +19,7 @@ export async function POST(
     }
 
     const userId = session.user.id;
-    const { conversationId } = params;
+    const { conversationId } = await params;
 
     // Check if user is a participant
     const participant = await prisma.conversationParticipant.findFirst({

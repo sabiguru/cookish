@@ -44,7 +44,7 @@ async function getBookings(userId: string, status?: string) {
 export default async function UserBookingsPage({
   searchParams,
 }: {
-  searchParams: { status?: string };
+  searchParams: Promise<{ status?: string }>;
 }) {
   const session = await getServerSession(authOptions);
   
@@ -52,7 +52,8 @@ export default async function UserBookingsPage({
     return null;
   }
 
-  const bookings = await getBookings(session.user.id, searchParams.status);
+  const resolvedSearchParams = await searchParams;
+  const bookings = await getBookings(session.user.id, resolvedSearchParams.status);
 
   return (
     <div className="space-y-6">
@@ -61,7 +62,7 @@ export default async function UserBookingsPage({
         <p className="text-gray-600 mt-1">Manage your chef bookings</p>
       </div>
 
-      <Tabs defaultValue={searchParams.status || 'all'} className="space-y-6">
+      <Tabs defaultValue={resolvedSearchParams.status || 'all'} className="space-y-6">
         <TabsList className="bg-white shadow-sm rounded-xl p-1">
           <TabsTrigger value="all" asChild>
             <Link href="/user/bookings?status=all" className="rounded-lg px-6">

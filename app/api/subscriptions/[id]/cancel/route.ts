@@ -6,7 +6,7 @@ import { stripe } from '@/lib/stripe/config';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -18,7 +18,7 @@ export async function POST(
       );
     }
 
-    const subscriptionId = params.id;
+    const { id: subscriptionId } = await params;
 
     // Get subscription from database
     const subscription = await prisma.subscription.findUnique({
