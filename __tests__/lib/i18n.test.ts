@@ -85,7 +85,7 @@ describe('i18n Utilities', () => {
     });
 
     it('should return default dictionary for invalid locale', () => {
-      // @ts-ignore - Testing runtime behavior
+      // @ts-expect-error - Testing runtime behavior
       const dict = getDictionary('invalid');
       const defaultDict = getDictionary('en');
 

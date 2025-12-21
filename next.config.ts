@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  outputFileTracingRoot: path.join(__dirname),
   images: {
     remotePatterns: [
       {
@@ -9,10 +11,6 @@ const nextConfig: NextConfig = {
         hostname: '**',
       },
     ],
-  },
-  eslint: {
-    // Temporarily allow builds to pass even with lint errors
-    ignoreDuringBuilds: true,
   },
 };
 
