@@ -50,7 +50,7 @@ async function getBookingDetails(bookingId: string, userId: string) {
 export default async function ChefBookingDetailsPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const session = await getServerSession(authOptions);
 
@@ -58,7 +58,8 @@ export default async function ChefBookingDetailsPage({
     return null;
   }
 
-  const booking = await getBookingDetails(params.id, session.user.id);
+  const { id } = await params;
+  const booking = await getBookingDetails(id, session.user.id);
 
   if (!booking) {
     notFound();
