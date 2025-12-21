@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { BookingStepper } from '@/components/booking/BookingStepper';
+import BookingStepper from '@/components/booking/BookingStepper';
 import { AddressForm, addressSchema, type AddressFormData } from '@/components/booking/AddressForm';
 import { IngredientList, type PayerType } from '@/components/booking/IngredientList';
 import { PaymentWidget } from '@/components/booking/PaymentWidget';
