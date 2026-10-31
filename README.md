@@ -146,7 +146,11 @@ Uses MinIO for object storage (S3-compatible). Access the MinIO console at http:
 
 ## License
 
-MIT
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Author
+
+Created by **sabiguru**
 
 ## Contributing
 
