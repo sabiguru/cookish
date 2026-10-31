@@ -44,6 +44,12 @@ cookish/
 └── public/                # Static assets
 ```
 
+## Development Status & Test Data
+
+This is a development project. All data in the database (customer accounts, addresses, payment records, chef profiles, bookings, messages, and reviews) is **fictional test data** created for development and demonstration purposes only. No real user data or payment information is stored.
+
+See [ROADMAP.md](ROADMAP.md) for planned features and development timeline.
+
 ## Getting Started
 
 ### Prerequisites
@@ -56,7 +62,7 @@ cookish/
 
 1. Clone the repository:
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/sabiguru/cookish.git
 cd cookish
 ```
 
