@@ -142,10 +142,10 @@ async function main() {
 
   // Seed admin users
   const admin1 = await prisma.user.upsert({
-    where: { email: 'admin@cookfort.com' },
+    where: { email: 'admin@example.com' },
     update: {},
     create: {
-      email: 'admin@cookfort.com',
+      email: 'admin@example.com',
       name: 'Sarah Admin',
       image: '/images/users/admin1-profile.jpg',
       roles: ['USER', 'ADMIN'],
@@ -153,10 +153,10 @@ async function main() {
   });
 
   const admin2 = await prisma.user.upsert({
-    where: { email: 'superadmin@cookfort.com' },
+    where: { email: 'superadmin@example.com' },
     update: {},
     create: {
-      email: 'superadmin@cookfort.com',
+      email: 'superadmin@example.com',
       name: 'Michael SuperAdmin',
       image: '/images/users/admin2-profile.jpg',
       roles: ['USER', 'ADMIN', 'SUPERADMIN'],
